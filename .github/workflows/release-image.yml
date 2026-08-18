@@ -1,0 +1,87 @@
+# Builds a Navidrome Docker image from this fork and publishes it to this
+# repository's GitHub Packages (GHCR), so it can be pulled onto a NAS/homelab.
+#
+# Image:  ghcr.io/<owner>/navidrome
+# Tags:   latest (default branch), <branch>, <git-tag/semver>, sha-<short>
+#
+# No external secrets required — auth uses the built-in GITHUB_TOKEN.
+# After the first successful run, make the package public (or keep it private
+# and `docker login ghcr.io` on the NAS) to pull it.
+name: Release image (GHCR)
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+concurrency:
+  group: release-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # required to push to GHCR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full history for `git describe`
+
+      - name: Compute version info
+        id: version
+        run: |
+          echo "git_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "git_tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "git_tag=$(git describe --tags --always --abbrev=0 2>/dev/null || echo dev)-SNAPSHOT" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU (for arm64 emulation of apk steps)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # Runnable image = default (final) Dockerfile stage. Do NOT set target: binary.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ steps.version.outputs.git_sha }}
+            GIT_TAG=${{ steps.version.outputs.git_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

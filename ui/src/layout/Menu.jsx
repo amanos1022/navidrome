@@ -5,6 +5,8 @@ import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import FolderIcon from '@material-ui/icons/Folder'
+import StarIcon from '@material-ui/icons/Star'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -102,6 +104,23 @@ const Menu = ({ dense = false }) => {
     )
   }
 
+  // Reuses the standard song list, preset to only rated songs sorted by rating.
+  const topRatedSongsLink = `/song?filter=${encodeURIComponent(
+    JSON.stringify({ has_rating: true }),
+  )}&sort=rating&order=DESC`
+
+  const renderTopRatedSongsLink = () => (
+    <MenuItemLink
+      key="topRatedSongs"
+      to={topRatedSongsLink}
+      activeClassName={classes.active}
+      primaryText={translate('menu.topRatedSongs', { _: 'Top Rated Songs' })}
+      leftIcon={<StarIcon />}
+      sidebarIsOpen={open}
+      dense={dense}
+    />
+  )
+
   const subItems = (subMenu) => (resource) =>
     resource.hasList && resource.options && resource.options.subMenu === subMenu
 
@@ -121,11 +140,24 @@ const Menu = ({ dense = false }) => {
         icon={<AlbumIcon />}
         dense={dense}
       >
-        {Object.keys(albumLists).map((type) =>
-          renderAlbumMenuItemLink(type, albumLists[type]),
-        )}
+        {Object.keys(albumLists).flatMap((type) => {
+          const item = renderAlbumMenuItemLink(type, albumLists[type])
+          // Place the "Top Rated Songs" link directly under the album "Top Rated"
+          return type === 'topRated'
+            ? [item, renderTopRatedSongsLink()]
+            : [item]
+        })}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      <MenuItemLink
+        key="files"
+        to="/files"
+        activeClassName={classes.active}
+        primaryText={translate('menu.files', { _: 'Files' })}
+        leftIcon={<FolderIcon />}
+        sidebarIsOpen={open}
+        dense={dense}
+      />
       {config.devSidebarPlaylists && open ? (
         <>
           <Divider />

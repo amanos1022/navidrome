@@ -14,6 +14,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -63,7 +64,34 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 	r.ctx = ctx
 	r.db = db
 	r.tableName = "folder"
+	r.registerModel(&model.Folder{}, folderFilters())
+	r.setSortMappings(map[string]string{
+		"name": "name",
+	})
 	return r
+}
+
+// folderFilters defines the REST filters accepted by the file-browser endpoint.
+// All column references are qualified with "folder." because selectFolder joins
+// the library table (which also has a library_id column).
+func folderFilters() map[string]filterFunc {
+	return map[string]filterFunc{
+		"id":         idFilter("folder"),
+		"library_id": func(_ string, v any) Sqlizer { return Eq{"folder.library_id": v} },
+		"missing": func(_ string, v any) Sqlizer {
+			return Eq{"folder.missing": strings.EqualFold(fmt.Sprint(v), "true")}
+		},
+		// parent_id == "root" lists the top-level folders. The library root is
+		// not stored as a folder row; its direct children are the folders whose
+		// relative path is "." (they sit directly in the library root). For any
+		// other value it's an exact parent match to drill down the tree.
+		"parent_id": func(_ string, v any) Sqlizer {
+			if s, ok := v.(string); ok && s == "root" {
+				return Eq{"folder.path": "."}
+			}
+			return Eq{"folder.parent_id": v}
+		},
+	}
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
@@ -288,4 +316,46 @@ func (r folderRepository) purgeEmpty(libraryIDs ...int) error {
 	return nil
 }
 
+// ResourceRepository implementation, used by the native API to power the file
+// browser (read-only: registered with persistable=false).
+
+func (r *folderRepository) Read(id string) (any, error) {
+	return r.Get(id)
+}
+
+func (r *folderRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
+	return r.GetAll(r.parseFolderOptions(options...))
+}
+
+func (r *folderRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseFolderOptions(options...))
+}
+
+func (r *folderRepository) EntityName() string {
+	return "folder"
+}
+
+func (r *folderRepository) NewInstance() any {
+	return &model.Folder{}
+}
+
+// parseFolderOptions converts REST query options into model.QueryOptions,
+// defaulting to only non-missing folders when the caller doesn't ask otherwise.
+func (r *folderRepository) parseFolderOptions(options ...rest.QueryOptions) model.QueryOptions {
+	var o rest.QueryOptions
+	if len(options) > 0 {
+		o = options[0]
+	}
+	if o.Filters == nil {
+		o.Filters = map[string]any{}
+	} else {
+		o.Filters = maps.Clone(o.Filters)
+	}
+	if _, ok := o.Filters["missing"]; !ok {
+		o.Filters["missing"] = "false"
+	}
+	return r.parseRestOptions(r.ctx, o)
+}
+
 var _ model.FolderRepository = (*folderRepository)(nil)
+var _ model.ResourceRepository = (*folderRepository)(nil)

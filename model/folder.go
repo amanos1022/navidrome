@@ -15,20 +15,20 @@ import (
 // Folder represents a folder in the library. Its path is relative to the library root.
 // ALWAYS use NewFolder to create a new instance.
 type Folder struct {
-	ID              string    `structs:"id"`
-	LibraryID       int       `structs:"library_id"`
+	ID              string    `structs:"id" json:"id"`
+	LibraryID       int       `structs:"library_id" json:"libraryId"`
 	LibraryPath     string    `structs:"-" json:"-" hash:"ignore"`
-	Path            string    `structs:"path"`
-	Name            string    `structs:"name"`
-	ParentID        string    `structs:"parent_id"`
-	NumAudioFiles   int       `structs:"num_audio_files"`
-	NumPlaylists    int       `structs:"num_playlists"`
-	ImageFiles      []string  `structs:"image_files"`
-	ImagesUpdatedAt time.Time `structs:"images_updated_at"`
-	Hash            string    `structs:"hash"`
-	Missing         bool      `structs:"missing"`
-	UpdateAt        time.Time `structs:"updated_at"`
-	CreatedAt       time.Time `structs:"created_at"`
+	Path            string    `structs:"path" json:"path"`
+	Name            string    `structs:"name" json:"name"`
+	ParentID        string    `structs:"parent_id" json:"parentId"`
+	NumAudioFiles   int       `structs:"num_audio_files" json:"numAudioFiles"`
+	NumPlaylists    int       `structs:"num_playlists" json:"numPlaylists"`
+	ImageFiles      []string  `structs:"image_files" json:"imageFiles"`
+	ImagesUpdatedAt time.Time `structs:"images_updated_at" json:"imagesUpdatedAt"`
+	Hash            string    `structs:"hash" json:"-"`
+	Missing         bool      `structs:"missing" json:"missing"`
+	UpdateAt        time.Time `structs:"updated_at" json:"updatedAt"`
+	CreatedAt       time.Time `structs:"created_at" json:"createdAt"`
 }
 
 func (f Folder) AbsolutePath() string {

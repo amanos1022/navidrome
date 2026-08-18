@@ -70,6 +70,7 @@ func (api *Router) routes() http.Handler {
 		api.R(r, "/album", model.Album{}, false)
 		api.addArtistRoute(r)
 		api.R(r, "/genre", model.Genre{}, false)
+		api.R(r, "/folder", model.Folder{}, false)
 		api.R(r, "/player", model.Player{}, true)
 		api.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)

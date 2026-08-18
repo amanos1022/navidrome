@@ -175,6 +175,7 @@ const Admin = (props) => {
         ) : null,
 
         <Resource name="translation" />,
+        <Resource name="folder" />,
         <Resource name="genre" />,
         <Resource name="tag" />,
         <Resource name="playlistTrack" />,

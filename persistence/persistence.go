@@ -119,6 +119,8 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 		return s.Album(ctx).(model.ResourceRepository)
 	case model.MediaFile:
 		return s.MediaFile(ctx).(model.ResourceRepository)
+	case model.Folder:
+		return s.Folder(ctx).(model.ResourceRepository)
 	case model.Genre:
 		return s.Genre(ctx).(model.ResourceRepository)
 	case model.Playlist:

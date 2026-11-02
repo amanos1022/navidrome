@@ -7,6 +7,7 @@
         "albumArtist": "Album Artist",
         "duration": "Time",
         "trackNumber": "#",
+        "discNumber": "Disc",
         "playCount": "Plays",
         "title": "Title",
         "artist": "Artist",
@@ -107,6 +108,9 @@
     },
     "artist": {
       "name": "Artist |||| Artists",
+      "lists": {
+        "random": "Random"
+      },
       "fields": {
         "name": "Name",
         "albumCount": "Album Count",
@@ -115,6 +119,7 @@
         "playCount": "Plays",
         "rating": "Rating",
         "genre": "Genre",
+        "genres": "Genres",
         "role": "Role",
         "missing": "Missing"
       },
@@ -604,7 +609,20 @@
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
     "downloadOriginalFormat": "Download in original format"
   },
+  "browse": {
+    "all": "All",
+    "editTags": "Edit Tags",
+    "editTagsCount": "Edit tags of %{smart_count} track |||| Edit tags of %{smart_count} tracks",
+    "editTagsWarning": "This rewrites the tags in the audio files on disk. Fields left blank are not changed.",
+    "multipleValues": "(multiple values)",
+    "selected": "%{smart_count} selected",
+    "showingFirst": "showing first %{shown} of %{total}",
+    "trackCount": "%{smart_count} track |||| %{smart_count} tracks",
+    "tagsUpdated": "Updated %{smart_count} file. Rescanning... |||| Updated %{smart_count} files. Rescanning...",
+    "tagsPartiallyUpdated": "Updated %{updated} files, %{failed} failed"
+  },
   "menu": {
+    "browse": "iTunes Browse",
     "files": "Files",
     "topRatedSongs": "Top Rated Songs",
     "library": "Library",

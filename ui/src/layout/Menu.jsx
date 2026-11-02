@@ -6,8 +6,10 @@ import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import FolderIcon from '@material-ui/icons/Folder'
+import ViewColumnIcon from '@material-ui/icons/ViewColumn'
 import StarIcon from '@material-ui/icons/Star'
 import SubMenu from './SubMenu'
+import RandomMenuItem from './RandomMenuItem'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
@@ -90,6 +92,21 @@ const Menu = ({ dense = false }) => {
       _: translatedResourceName(resource, translate),
     })
 
+    // Random offers a flyout to shuffle albums (the default) or artists
+    if (type === 'random') {
+      return (
+        <RandomMenuItem
+          key={albumListAddress}
+          to={albumListAddress}
+          primaryText={name}
+          leftIcon={al.icon || <ViewListIcon />}
+          activeClassName={classes.active}
+          sidebarIsOpen={open}
+          dense={dense}
+        />
+      )
+    }
+
     return (
       <MenuItemLink
         key={albumListAddress}
@@ -149,6 +166,15 @@ const Menu = ({ dense = false }) => {
         })}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      <MenuItemLink
+        key="browse"
+        to="/browse"
+        activeClassName={classes.active}
+        primaryText={translate('menu.browse', { _: 'iTunes Browse' })}
+        leftIcon={<ViewColumnIcon />}
+        sidebarIsOpen={open}
+        dense={dense}
+      />
       <MenuItemLink
         key="files"
         to="/files"

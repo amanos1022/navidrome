@@ -54,7 +54,7 @@ const BulkActionButtons = (props) => (
   </>
 )
 
-const missingPerPageOptions = [50, 100, 200]
+const missingPerPageOptions = [50, 100, 200, 1000]
 
 const MissingPagination = (props) => (
   <Pagination rowsPerPageOptions={missingPerPageOptions} {...props} />

@@ -143,8 +143,10 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"role":       roleFilter,
 		"missing":    booleanFilter,
 		"library_id": artistLibraryIdFilter,
+		"genre_id":   artistGenreFilter,
 	})
 	r.setSortMappings(map[string]string{ //nolint:gosec
+		"random":      "random",
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
 		"rated_at":    "rating, rated_at",
@@ -158,6 +160,12 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"maincredit_size":        "sum(stats->>'maincredit'->>'s')",
 	})
 	return r
+}
+
+// artistGenreFilter matches artists credited as album artist on an album of the given genre(s),
+// which is what the genre column of the browser narrows by.
+func artistGenreFilter(_ string, value any) Sqlizer {
+	return AlbumArtistsByGenreID(value)
 }
 
 func roleFilter(_ string, role any) Sqlizer {
@@ -281,6 +289,50 @@ func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, e
 func (r *artistRepository) hydrateArtwork(artists model.Artists) {
 	hydrateItems(r.ctx, r.db, model.KindArtistArtwork, artists,
 		func(a *model.Artist) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
+}
+
+// hydrateGenres fills each artist's Genres with the genres of the albums they are credited on, in
+// one batched query per chunk of ids. Only the REST list needs it, so GetAll (and with it the
+// Subsonic endpoints and the artist index, which read every artist) keep their current cost.
+func (r *artistRepository) hydrateGenres(artists model.Artists) error {
+	if len(artists) == 0 {
+		return nil
+	}
+	libraryIDs, err := r.visibleLibraryIDs()
+	if err != nil {
+		return err
+	}
+	ids := slice.Map(artists, func(a model.Artist) string { return a.ID })
+	byArtist := make(map[string]model.Genres, len(artists))
+	for chunk := range slices.Chunk(ids, artworkChunkSize) {
+		query := Select("album_artists.artist_id", "tag.id", "tag.tag_value as name").
+			From("album_artists").
+			Join("album on album.id = album_artists.album_id").
+			Join("album_tags on album_tags.album_id = album_artists.album_id").
+			Join("tag on tag.id = album_tags.tag_id").
+			Where(And{
+				Eq{"album_artists.artist_id": chunk},
+				Eq{"album.library_id": libraryIDs},
+				Eq{"tag.tag_name": model.TagGenre},
+			}).
+			GroupBy("album_artists.artist_id", "tag.id").
+			OrderBy("tag.tag_value")
+		var rows []struct {
+			ArtistID string
+			ID       string
+			Name     string
+		}
+		if err := r.queryAll(query, &rows); err != nil {
+			return err
+		}
+		for _, row := range rows {
+			byArtist[row.ArtistID] = append(byArtist[row.ArtistID], model.Genre{ID: row.ID, Name: row.Name})
+		}
+	}
+	for i := range artists {
+		artists[i].Genres = byArtist[artists[i].ID]
+	}
+	return nil
 }
 
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
@@ -722,7 +774,14 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
 	r.sortMappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
 	r.sortMappings["size"] = "sum(stats->>'" + role + "'->>'s')"
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+	artists, err := r.GetAll(r.parseRestOptions(r.ctx, options...))
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrateGenres(artists); err != nil {
+		return nil, err
+	}
+	return artists, nil
 }
 
 func (r *artistRepository) EntityName() string {

@@ -106,7 +106,8 @@ func (g genreFilterDef) ByName(genre string) Sqlizer {
 
 // AlbumArtistsByGenreID matches album artists of albums tagged with any of the genre ids. It's a
 // two-table join (album_artists ⨝ album_tags), so it doesn't fit the single-table genreFilterDef.
-func AlbumArtistsByGenreID(tagIDs []string) Sqlizer {
+// tagIDs is a single id or a slice of them, as Eq accepts both.
+func AlbumArtistsByGenreID(tagIDs any) Sqlizer {
 	sub, args, _ := Select("aa.artist_id").From("album_artists aa").
 		Join("album_tags at on at.album_id = aa.album_id").
 		Where(And{Eq{"aa.role": "albumartist"}, Eq{"at.tag_id": tagIDs}}).ToSql()

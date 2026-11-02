@@ -82,6 +82,7 @@ var _ = Describe("Sort index coverage", func() {
 				return &NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository).sqlRepository
 			},
 			exceptions: map[string]string{ //nolint:gosec // G101 false positive, same as the artist sortMappings
+				"random":                 "not a column sort",
 				"starred_at":             "sorts on annotation join columns",
 				"rated_at":               "sorts on annotation join columns",
 				"song_count":             "JSON expression over stats column",

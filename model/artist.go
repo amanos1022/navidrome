@@ -26,6 +26,7 @@ type Artist struct {
 	Size       int64                `structs:"-" json:"size,omitempty"`
 	AlbumCount int                  `structs:"-" json:"albumCount,omitempty"`
 	SongCount  int                  `structs:"-" json:"songCount,omitempty"`
+	Genres     Genres               `structs:"-" json:"genres,omitempty"` // Genres of the albums this artist is credited on. Only filled by the REST list.
 
 	// Data imported from external sources
 	Biography             string     `structs:"biography" json:"biography,omitempty"`

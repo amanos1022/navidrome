@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useHistory } from 'react-router-dom'
+import { Redirect, useHistory, useLocation } from 'react-router-dom'
 import {
   Datagrid,
   DatagridBody,
@@ -10,7 +10,9 @@ import {
   SearchInput,
   SelectInput,
   TextField,
+  useRefresh,
   useTranslate,
+  useVersion,
   NullableBooleanInput,
   usePermissions,
 } from 'react-admin'
@@ -24,6 +26,7 @@ import {
   ArtistContextMenu,
   ArtworkAvatar,
   List,
+  Title,
   useGetHandleArtistClick,
   RatingField,
   useSelectedFields,
@@ -126,7 +129,14 @@ const ArtistDatagrid = (props) => (
   <Datagrid {...props} body={<ArtistDatagridBody />} />
 )
 
-const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
+const ArtistListView = ({
+  hasShow,
+  hasEdit,
+  hasList,
+  width,
+  showGenres,
+  ...rest
+}) => {
   const { filterValues } = rest
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
@@ -186,6 +196,13 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
         render={getSongCount}
       />
       <FunctionField source="size" sortByOrder={'DESC'} render={getSize} />
+      {showGenres && (
+        <FunctionField
+          source="genres"
+          sortable={false}
+          render={(record) => record?.genres?.map((g) => g.name).join(', ')}
+        />
+      )}
       {columns}
       <ArtistContextMenu
         source={'starred_at'}
@@ -205,19 +222,56 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   )
 }
 
+const ArtistListTitle = () => {
+  const translate = useTranslate()
+  const name = translate('resources.artist.name', { smart_count: 2 })
+  const listTitle = translate('resources.artist.lists.random', { _: 'Random' })
+  return <Title subTitle={`${name} - ${listTitle}`} args={{ smart_count: 2 }} />
+}
+
+const randomStartingSeed = Math.random().toString()
+
 const ArtistList = (props) => {
+  const location = useLocation()
+  const version = useVersion()
+  const refresh = useRefresh()
+  // Same shape as the album lists: /artist/random renders this list with a random sort, and the
+  // seed keeps the shuffle stable while paging, rerolling only on an explicit refresh.
+  const isRandom = location.pathname === '/artist/random'
+  const seed = `${randomStartingSeed}-${version}`
+
+  // Coming from the menu there are no params yet: reroll and redirect to the sorted URL.
+  if (isRandom && !location.search) {
+    refresh()
+    return (
+      <Redirect
+        to={`/artist/random?sort=random&order=ASC&filter=${encodeURIComponent(
+          JSON.stringify({ role: 'albumartist' }),
+        )}`}
+      />
+    )
+  }
+
   return (
     <>
       <List
         {...props}
-        sort={{ field: 'name', order: 'ASC' }}
+        sort={
+          isRandom
+            ? { field: 'random', order: 'ASC' }
+            : { field: 'name', order: 'ASC' }
+        }
         exporter={false}
         bulkActionButtons={false}
         filters={<ArtistFilter />}
         filterDefaultValues={{ role: 'albumartist' }}
         actions={<ArtistListActions />}
+        {...(isRandom && {
+          filter: { seed },
+          title: <ArtistListTitle />,
+        })}
       >
-        <ArtistListView {...props} />
+        <ArtistListView {...props} showGenres={isRandom} />
       </List>
     </>
   )

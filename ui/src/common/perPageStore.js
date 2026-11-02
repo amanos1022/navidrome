@@ -1,4 +1,4 @@
-export const defaultRowsPerPageOptions = [15, 25, 50]
+export const defaultRowsPerPageOptions = [15, 25, 50, 1000]
 
 const key = (resource) => `perPage.${resource}`
 

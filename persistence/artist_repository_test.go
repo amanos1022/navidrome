@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -579,6 +580,71 @@ var _ = Describe("ArtistRepository", func() {
 						Expect(a.ID).ToNot(Equal(artistWithoutAnnotation.ID))
 					}
 				})
+			})
+		})
+
+		Describe("Genres", func() {
+			var albumRepo model.AlbumRepository
+			var tagRepo model.TagRepository
+			var artist model.Artist
+			var genre, otherGenre model.Tag
+
+			BeforeEach(func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				albumRepo = NewAlbumRepository(ctx, GetDBXBuilder())
+				tagRepo = NewTagRepository(ctx, GetDBXBuilder())
+
+				genre = model.Tag{ID: id.NewTagID("genre", "Shoegaze"), TagName: model.TagGenre, TagValue: "Shoegaze"}
+				otherGenre = model.Tag{ID: id.NewTagID("genre", "Bebop"), TagName: model.TagGenre, TagValue: "Bebop"}
+				Expect(tagRepo.Add(1, genre, otherGenre)).To(Succeed())
+
+				artist = model.Artist{ID: "genre-artist-1", Name: "Genre Artist", OrderArtistName: "genre artist"}
+				Expect(createArtistWithLibrary(repo, &artist, 1)).To(Succeed())
+
+				album := &model.Album{
+					LibraryID:     1,
+					ID:            "genre-album-1",
+					Name:          "Genre Album",
+					AlbumArtistID: artist.ID,
+					AlbumArtist:   artist.Name,
+					Tags:          model.Tags{model.TagGenre: []string{"Shoegaze"}},
+					Participants: model.Participants{
+						model.RoleAlbumArtist: {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
+					},
+				}
+				Expect(albumRepo.Put(album)).To(Succeed())
+			})
+
+			AfterEach(func() {
+				raw := repo.(*artistRepository)
+				_, _ = raw.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "genre-album-1"}))
+				_, _ = raw.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			})
+
+			It("fills the genres of the albums the artist is credited on", func() {
+				res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"id": artist.ID},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				artists := res.(model.Artists)
+				Expect(artists).To(HaveLen(1))
+				Expect(artists[0].Genres).To(ConsistOf(model.Genre{ID: genre.ID, Name: genre.TagValue}))
+			})
+
+			It("filters by genre_id", func() {
+				res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"genre_id": genre.ID},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(res.(model.Artists), func(a model.Artist) string { return a.ID })).
+					To(ContainElement(artist.ID))
+
+				res, err = repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					Filters: map[string]any{"genre_id": otherGenre.ID},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(res.(model.Artists), func(a model.Artist) string { return a.ID })).
+					ToNot(ContainElement(artist.ID))
 			})
 		})
 

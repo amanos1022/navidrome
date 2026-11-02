@@ -9,12 +9,16 @@ const getPerPage = (width) => {
   return 36
 }
 
+// 1000 is offered at every width as an "almost everything" option, for people who prefer
+// scrolling one long page over paging.
+const bulkPerPage = 1000
+
 const getPerPageOptions = (width) => {
   const options = [3, 6, 12]
-  if (width === 'xs') return [12]
-  if (width === 'sm') return [12]
-  if (width === 'md') return options.map((v) => v * 4)
-  return options.map((v) => v * 6)
+  if (width === 'xs') return [12, bulkPerPage]
+  if (width === 'sm') return [12, bulkPerPage]
+  if (width === 'md') return [...options.map((v) => v * 4), bulkPerPage]
+  return [...options.map((v) => v * 6), bulkPerPage]
 }
 
 export const useAlbumsPerPage = (width) => {

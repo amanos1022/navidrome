@@ -50,7 +50,13 @@ describe('useAlbumsPerPage', () => {
   it('returns the responsive default when nothing is stored', () => {
     setReduxPerPage(undefined)
     const { result } = renderHook(() => useAlbumsPerPage('xl'))
-    expect(result.current).toEqual([36, [18, 36, 72]])
+    expect(result.current).toEqual([36, [18, 36, 72, 1000]])
+  })
+
+  it('offers the 1000-item option at every width', () => {
+    setReduxPerPage(undefined)
+    const { result } = renderHook(() => useAlbumsPerPage('xs'))
+    expect(result.current[1]).toContain(1000)
   })
 
   it('ignores a redux value invalid for the current width', () => {

@@ -18,7 +18,7 @@ import {
   useResourceRefresh,
 } from '../common'
 
-const playlistTrackPerPageOptions = [100, 250, 500]
+const playlistTrackPerPageOptions = [100, 250, 500, 1000]
 
 const useStyles = makeStyles(
   (theme) => ({

@@ -44,6 +44,7 @@
 
             pkgs.git
             pkgs.gnumake
+            pkgs.zip # plugins/testdata packs its .ndp fixtures with zip, so `go test ./plugins/...` needs it
           ] ++ runtimeLibs;
 
           env = {
